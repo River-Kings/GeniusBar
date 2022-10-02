@@ -1,0 +1,31 @@
+{
+    "manifest_version": 3,
+    "name": "Genius Bar",
+  
+    "description": "Genius Bar for board evaluations that consider player history and strength as part of the evaluation. Built off Stockfish.",
+    "version": "0.1",
+    "permissions": [
+        "scripting",
+        "tabs"
+      ],
+      "host_permissions": [
+        "*://*.lichess.org/*"
+      ],
+    "action": {
+        "default_icon": {
+            "16": "icon.png",
+            "24": "icon.png",
+            "32": "icon.png"
+        },
+        "default_title": "Genius Bar",
+        "default_popup": "popup.html"
+    },
+    "content_scripts": [
+        {
+        "matches": ["*://*.lichess.org/*"],
+        "css": ["overlay.css", "overlay1.css"],
+        "js": ["content.js"]
+        }
+    ]
+
+  }
