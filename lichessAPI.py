@@ -33,17 +33,95 @@ headers = (
 G_R = 0 # general rating
 SKILL_R = [0, 0, 0] # [PNT_R, POS_R, MAT_R]
 TYPE_DICT = {"point": 0, "position": 1, "mate": 2}
-def moveClassifier(gameEvals, moveNum, pgnList):
+def moveClassifier(gameEvals, moveNum, index):
     # gameEvals: [fens, evalDict, posMoves] for the fen of every point of the game 
     # pgnList: list of moves made 
-    
+    # moveNum: the move number usually taken from evaluateGame
+    # index: the index of the stockfish suggestion we want to classify
     # compute the certain type of move - used in evaluateGame to determine how to adjust ratings
-    top5 = gameEvals[2][fen]
-    moveMade = pgnList[moveNum * 4 - 1]
-    currFen = gameEvals[0][moveNum*4 - 1]
-    cpOfMove = gameEvals[1][currFen]
     
+    mover = fen.split(" ")[1] 
+    if mover == "w":
+    	my_move = pgnList[moveNum * 4 - 3] # my move in normal format
+    	opp_move = pgnList[moveNum * 4 - 1] # opponent move in normal format
+        prev_fen = gameEvals[0][moveNum * 4 -3]
+        curr_fen = gameEvals[0][moveNum*4 - 1]
+        cp_prev = gameEvals[1][prev_fen]
+    	cp_move = gameEvals[1][curr_fen]
+        move_seq = gameEvals[2][curr_fen][index]["moves"]
+        if cp_move - cp_prev > 90 and takeFinder(curr_fen, move_seq):
+          return "point"
+    else:
+      	assert mover == "b"
+     	my_move = pgnList[moveNum * 4 - 5] # my move in normal format
+    	opp_move = pgnList[moveNum * 4 - 3] # opponent move in normal format
+        prev_fen = gameEvals[0][moveNum * 4 -5]
+        curr_fen = gameEvals[0][moveNum*4 - 3]
+        cp_prev = gameEvals[1][prev_fen]
+    	cp_move = gameEvals[1][curr_fen]
+        move_seq = gameEvals[2][curr_fen][index]["moves"]
+    	if cp_move - cp_prev < -0.9 and takeFinder(curr_fen, move_seq):
+          return "point"
+    if stockfish.get_evaluation()["type"] == "mate":
+		return "mate"
+    else:
+		return "position"
 
+def takeSequence(numMoves=5):
+	starting_pos = stockfish.get_fen_position() 
+	moveCount = 0
+    while moveCount < numMoves:
+    	best_move = stockfish.get_best_move()
+        
+        if stockfish.will_move_be_a_capture(best_move):
+        	stockfish.set_fen_position(starting_pos)
+        	return moveCount
+        
+        stockfish.make_moves_from_current_position([best_move])
+
+    	moveCount += 1
+    stockfish.set_fen_position(starting_pos)
+    return -1 
+  
+# def takeFinder(fen, sequence):
+#   	# fen is the board state left to right top to bottom
+#     # sequence is the sequence of moves in weird format that need to be converted
+#     # 'fen': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+#     # moves': 'e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6', 'cp': 32
+#     board = []
+#     # example fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+#     # example sequence = 'e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6'
+#     num_takes = 0
+#     row_help = {"a":1, "b":2, "c": 3, "d": 4, "e":5, "f":6, "g":7, "h":8}
+#     for _ in range(8):
+#         board.append([0 for i in range(8)])
+#     clean1 = fen.split(" ")
+#     clean2 = clean1[0]
+#     for i in range(1,9):
+#         clean2 = clean2.replace(str(i), "".zfill(i))
+#     rows = clean2.split("/")
+#     rows.reverse() # start from row 1 instead of row 8
+#     assert len(rows) == 8
+#     for i in range(1, 9):
+#         for j in range(1, 9):
+#             if rows[i-1][j-1].isalpha(): 
+#                 board[i-1][j-1] = 1 # mark which squares have pieces with a 1
+#     moves = sequence.split(" ")
+#     for each in moves:
+#         assert len(each) == 4
+#         orig_pos = each[:2]
+#         new_pos = each[2:]
+#         assert board[int(orig_pos[1])-1][row_help[orig_pos[0]]-1] == 1
+#         board[int(orig_pos[1])-1][row_help[orig_pos[0]]-1] = 0
+#         if board[int(new_pos[1])-1][row_help[new_pos[0]]-1] == 1: # record if there is a take
+#             num_takes += 1
+#         board[int(new_pos[1])-1][row_help[new_pos[0]]-1] = 1 # move pieces and update board
+#     #for i in range(7, -1, -1):
+#     #    print(board[i])      
+#     return True if num_takes > 0 else False
+      
+      
+    
 # def compareMoves(pgnMove, twoSquareMove, fen):
 # 	squareArrivedA = pgnMove[-2:] if pgnMove[-1].isdigit() else ''.join(re.split('(\d+)',pgnMove)[-3:-1])[-2:]
 # 	squareArrivedB = twoSquareMove[2:]
@@ -69,66 +147,75 @@ def moveClassifier(gameEvals, moveNum, pgnList):
     
 #     return True 
 
-# def compareInTop5(pgnMove, top5, fen):
-# 	for move in top5:
-#     	if compareMoves(pgnMove, )
-    
-# def evaluateGame(playerRatings, whiteOrBlack, numGamesEvaluated, gameEvals, pgnList):
-#     # player ratings: both positional and general rating
-#     # white or black: which player we should be consdering  
-#     # num games evaluated: how many games have already been analyzed for this player
-#         # weight higher for more recent games? 
-#     # GameEvals: [fens, evalDict, posMoves] for the fen of every point of the game 
-#     # pgnList: list of moves made 
 
-#     for fen in gameEvals[0]:
-#         mover = fen.split(" ")[1]
-#         if mover == whiteOrBlack:
-#             moveNum = fen.split(" ")[-1]
-#             moveMade = pgnList[moveNum * 4 - 1]
-#             currFen = gameEvals[0][moveNum*4 - 1]
-#           	cpOfMove = gameEvals[1][currFen]
-#             top5 = gameEvals[2][fen] 
-#             top5firstMove = [twoSquareConverter(fen, x['moves'][2:4]) for x in top5] # ['f3', 'd4', 'g3']
-#           	compare_threshold = some_weight * top5firstMove[0]["cp"]
-#             # classify their move + top 5 moves? 
-#             # point adv
-#             # mating setups
-#             # positional
-# 			move_type = " "
-#             # scale amounts 
+def compareMoves(move1, move2, fen):
+	starting_pos = stockfish.get_fen_position() 
+    stockfish.make_moves_from_current_position([move1])
+    mainNew = stockfish.get_fen_position()
+    
+    stockfish.set_fen_position(starting_pos)
+	stockfish.make_moves_from_current_position([move2])
+    secondNew = stockfish.get_fen_position()
+    return mainNew == secondNew 
+  
+def compareInTop5(pgnMove, top5, fen):
+	for move in top5:
+    	if compareMoves(pgnMove, move, fen):
+        	return True
+    return False 
+    
+def evaluateGame(playerRatings, whiteOrBlack, numGamesEvaluated, gameEvals, pgnList):
+    # player ratings: both positional and general rating
+    # white or black: which player we should be consdering  
+    # num games evaluated: how many games have already been analyzed for this player
+        # weight higher for more recent games? 
+    # GameEvals: [fens, evalDict, posMoves] for the fen of every point of the game 
+    # pgnList: list of moves made 
+
+    for fen in gameEvals[0]:
+        mover = fen.split(" ")[1]
+        player_move = -1 if mover == "w" else 1
+        if mover == whiteOrBlack:
+            moveNum = fen.split(" ")[-1]
+            moveMade = pgnList[moveNum * 4 + player_move]
+            currFen = gameEvals[0][moveNum*4 + player_move]
+            cpOfMove = gameEvals[1][currFen]
+            top5 = gameEvals[2][fen] 
+            top5firstMove = [x['moves'][2:4] for x in top5] # ['f3', 'd4', 'g3']
+            compare_threshold = some_weight * top5firstMove[0]["cp"]
+            # classify their move + top 5 moves? 
+            # point adv
+            # mating setups
+            # positional
+            best_move_type = moveClassifier(gameEvals, moveNum, index = 0)
+            
+            # scale amounts 
 						
-#             # if best move, ++ general rating, ++ particular skill 
-#             if moveMade in top5firstMove:
-#               	G_R += 2*weight
-#               	SKILL_R[TYPE_DICT[move_type]] += 2*weight 
+            # if best move, ++ general rating, ++ particular skill 
+            # if "TODO IMPLEMENT USING ALBERT'S METHODS":
+            if compareMoves(moveMade, bestMove, fen):
+                G_R += 2*weight
+                SKILL_R[TYPE_DICT[best_move_type]] += 2*weight 
               
-#             # if move in top 5 moves, + general, + skill, no/low penality
-#             elif moveMade in top5firstMove:
-#               	G_R += 1*weight
-#               	SKILL_R[TYPE_DICT[move_type]] += 1*weight
-    		
-# 				else:
-#                 	top_move_type = " "
-#             # elif move comparable, 0 general, - skill of top move
-# 					if top5firstMove[0]["cp"] - cpOfMove > compare_threshold:
-#                 		G_R += 0
+            # if move in top 5 moves, + general, + skill, no/low penality
+            elif compareInTop5(moveMade, top5, fen):
+                G_R += 1*weight
+                made_move_type = moveClassifier(gameEvals, moveNum, TODO FIND INDEX)
+                SKILL_R[TYPE_DICT[made_move_type]] += 1*weight
+    			
+            else:       
+                
+            # elif move comparable, 0 general, - skill of top move
+                if top5firstMove[0]["cp"] - cpOfMove > compare_threshold:
+                    G_R += 0
                   		
-#                   		SKILL_R[TYPE_DICT[top_move_type]] -= 1*weight
-#             # elif move bad, - general, - skill of top moves, penalize 
-#     				else:
-#                 		G_R -= 1*weight
-#                   		SKILL_R[TYPE_DICT[top_move_type]] -= 1.5*weight
-    
-# posMoves = [{'moves': 'e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6', 'cp': 32}, 
-# {'moves': 'g1f3 e7e6 c2c4 g8f6 g2g3 d7d5 f1g2 d5c4 d1a4 c8d7', 'cp': 24}, 
-# {'moves': 'd2d4 g8f6 c2c4 e7e6 g1f3 d7d5 b1c3 f8e7 c1f4 e8h8', 'cp': 24}, 
-# {'moves': 'g2g3 e7e5 c2c4 c7c6 g1f3 e5e4 f3d4 d7d5 c4d5 d8d5', 'cp': 14}, 
-# {'moves': 'c2c4 e7e5 g2g3 g8f6 f1g2 c7c6 g1f3 e5e4 f3d4 d8b6', 'cp': 12}]
-            
-            
-            
+                    SKILL_R[TYPE_DICT[best_move_type]] -= 1*weight
+                # elif move bad, - general, - skill of top moves, penalize 
+                else:
+                    G_R -= 1*weight
+                    SKILL_R[TYPE_DICT[best_move_type]] -= 1.5*weight
 
+            
 def deLiteratePGN(PGN):
     built = ""
     stack = [] 
