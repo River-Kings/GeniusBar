@@ -1,0 +1,1 @@
+{"version":3,"file":"manager-providers.d.ts","sourceRoot":"","sources":["../../api/manager-providers.ts"],"names":[],"mappings":"AAIA,OAAO,EAOL,SAAS,EACV,MAAM,aAAa,CAAC;AAqFrB,MAAM,CAAC,OAAO,UAAU,WAAW,CAAC,MAAM,EAAE;IAC1C,GAAG,EAAE,MAAM,CAAC;IACZ,OAAO,CAAC,EAAE,MAAM,CAAC;IACjB,KAAK,CAAC,EAAE,MAAM,CAAC;IACf,QAAQ,CAAC,EAAE,SAAS,EAAE,CAAA;CACvB,GAAG,OAAO,CAAC,GAAG,CAAC,CAkDf"}
